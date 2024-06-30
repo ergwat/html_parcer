@@ -26,10 +26,9 @@ def get_urls(url):
         full_links.append(full_link)
         #print(full_link)
     return full_links
-url0 = "https://mvi-rus.ru/catalog/krany-mvi/"
 
-url = "https://mvi-rus.ru/catalog/krany-mvi/kran-sharovyy-polnoprokhodnoy-mvi-vnutrennyaya-vnutrennyaya-babochka/"
 
-#get_prices(url)
-for i in get_urls(url0):
+url = "https://mvi-rus.ru/catalog/krany-mvi/"
+
+for i in get_urls(url):
     get_prices(i)
