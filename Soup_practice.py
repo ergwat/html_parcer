@@ -53,27 +53,36 @@ def get_english_word():
 
 #=============================== функция самой игры "угадай слово"
 def word_game():
-    print("Добро пожаловать в игру")
+    print("Добро пожаловать в игру. Тебе придётся угадывать английские слова по их значению. Будет непросто")
     while True:
         # Создаём функцию, чтобы использовать результат функции-словаря
         word_dict = get_english_word()
         word = word_dict.get("english_words")
         word_definition = word_dict.get("word_definition")
 
-        # Начинаем игру
-        translator = Translator()
-        definition_translation = translator.translate(word_definition, src="en", dest="ru")
-        word_translation = translator.translate(word, src="en", dest="ru")
-        print(f"Значение слова - {definition_translation.text}")
+#       Начинаем игру без перевода, всё будет по жести, но хотя бы есть шанс.
+        print(f"Значение слова - {word_definition}")
         user = input("Что это за слово? ")
-        if user == word_translation:
+        if user == word:
             print("Все верно!")
         else:
-            print(f"Ответ неверный, было загадано это слово - {word_translation.text}")
+            print(f"Ответ неверный, было загадано это слово - {word}")
+
+        '''        # Начинаем игру с переводом. Получается бессмыслица, я проверял)))
+                translator = Translator()
+                definition_translation = translator.translate(word_definition, src="en", dest="ru")
+                word_translation = translator.translate(word, src="en", dest="ru")
+                print(f"Значение слова - {definition_translation.text}")
+                user = input("Что это за слово? ")
+                if user == word_translation:
+                    print("Все верно!")
+                else:
+                    print(f"Ответ неверный, было загадано это слово - {word_translation.text}")
+        '''
 
         # Создаём возможность закончить игру
-        play_again = input("Хотите сыграть еще раз? д/н  ")
-        if play_again != "д":
+        play_again = input("Хотите сыграть еще раз? y/n  ")
+        if play_again != "y":
             print("Спасибо за игру!")
             break
 
