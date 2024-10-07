@@ -6,6 +6,10 @@ import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl import load_workbook
 import os
+import urllib.request
+from urllib.request import urlopen
+from bs4 import BeautifulSoup
+import re
 
 def table_decomposition(url):
 
@@ -94,54 +98,44 @@ def get_urls_lvl_2(url):
     response = requests.get(url)
     html = response.text
     soup = BeautifulSoup(html, "html.parser")
-    full_links2 = []
+    #links = soup.find_all("a", class_="catalog2 subgroup")
+    full_links = []
     # Находим div с классом "catalog2 subgroup"
     catalog_div = soup.find("div", class_="catalog2 subgroup")
 
     # Извлекаем все ссылки (теги <a>) внутри этого блока
-    links2 = catalog_div.find_all("a")
+    links = catalog_div.find_all("a")
 
     # Собираем полные ссылки
-    for link in links2:
-        full_link2 = "https://valtec.ru" + str(link.get('href'))
-        full_links2.append(full_link2)
-        #print(full_link2)
-    return full_links2
+    for link in links:
+        full_link = "https://valtec.ru" + str(link.get('href'))
+        full_links.append(full_link)
+        print(full_link)
+    return full_links
+
+''' ============== пытаемся выгрузить sitemap.xml ============='''
+def find_all_product_links(url):
+    """Функция для поиска всех ссылок на продукты."""
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    soup = BeautifulSoup(urllib.request.urlopen(req), 'html.parser')
+    all_product_links = [link.get('href') for link in soup.find_all('loc') if
+                         re.search('catalog/', link.text) ] #and link.text.endswith('.html')]
+    print(all_product_links)
+    return all_product_links
 
 
-def get_urls_lvl_1(url):
-    response = requests.get(url)
-    html = response.text
-    soup = BeautifulSoup(html, "html.parser")
-    #links = soup.find_all("a", class_="col")
-    full_links1 = []
-    # Находим div с классом "col"
-    catalog_div = soup.find("div", class_="col")
-    '''=======================
-    вот тут творится фигня, он проходит только первый тэг div класса col, после него останавливается
-    ======================='''
-    print(f"Все теги DIV в каталожном разделе 1-го уровня: {catalog_div}")
-    # Извлекаем все ссылки (теги <a>) внутри этого блока
-    links1 = catalog_div.find_all("a")
-
-    print(f"Все ссылки на каталожный раздел 2-го уровня: {links1}")
-    # Собираем полные ссылки
-    for link in links1:
-        full_link1 = "https://valtec.ru" + str(link.get('href'))
-        full_links1.append(full_link1)
-    print(f"ссылки на каталожный раздел 2-го уровня: {full_links1}")
-    return full_links1
-
-
-
+'''
 url0 = "https://valtec.ru/catalog/"
 url1 = "https://valtec.ru/catalog/filtry/"
-#url2 = "https://valtec.ru/catalog/filtry/filtry_kosye/"
-#url3 = "https://valtec.ru/catalog/filtry/filtry_kosye/filtruyushij_lement_dlya_kosyh_filtrov.html"
-#table_decomposition(url3)
+url2 = "https://valtec.ru/catalog/filtry/filtry_kosye/"
+url3 = "https://valtec.ru/catalog/filtry/filtry_kosye/filtruyushij_lement_dlya_kosyh_filtrov.html"
 
-for i in get_urls_lvl_1(url1):
-    print(f"Прогон цикла ссылок 1 уровня: {i}")
-    for j in get_urls_lvl_2(i):
-        print(f"Прогон цикла ссылок 2 уровня: {j}")
-        table_decomposition(j)
+for i in get_urls_lvl_2(url2):
+    print(i)
+    table_decomposition(i)
+'''
+
+sitemap_url="https://valtec.ru/sitemap.xml"
+#get_sitemap(sitemap_url)
+for i in find_all_product_links(sitemap_url):
+    table_decomposition(i)
