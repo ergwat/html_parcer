@@ -43,7 +43,7 @@ def table_decomposition(url):
             table_data.append(row_data)
 
     # Вывод результата
-    #pprint.pprint(table_data)
+    pprint.pprint(table_data)
     print_to_excel(table_data)
 
 def print_to_excel(table_data):
@@ -105,7 +105,6 @@ def get_urls_lvl_2(url):
     for link in links2:
         full_link2 = "https://valtec.ru" + str(link.get('href'))
         full_links2.append(full_link2)
-        #print(full_link2)
     return full_links2
 
 
@@ -113,24 +112,43 @@ def get_urls_lvl_1(url):
     response = requests.get(url)
     html = response.text
     soup = BeautifulSoup(html, "html.parser")
-    #links = soup.find_all("a", class_="col")
     full_links1 = []
-    # Находим div с классом "col"
-    catalog_div = soup.find("div", class_="col")
-    '''=======================
-    вот тут творится фигня, он проходит только первый тэг div класса col, после него останавливается
-    ======================='''
-    print(f"Все теги DIV в каталожном разделе 1-го уровня: {catalog_div}")
-    # Извлекаем все ссылки (теги <a>) внутри этого блока
-    links1 = catalog_div.find_all("a")
 
-    print(f"Все ссылки на каталожный раздел 2-го уровня: {links1}")
-    # Собираем полные ссылки
-    for link in links1:
-        full_link1 = "https://valtec.ru" + str(link.get('href'))
-        full_links1.append(full_link1)
-    print(f"ссылки на каталожный раздел 2-го уровня: {full_links1}")
+    # Находим родительский блок с классом "catalog-2 container"
+    catalog_div = soup.find("div", class_="catalog-2 container")
+
+    # Если такой блок найден
+    if catalog_div:
+        # Находим все элементы div с классом "col" внутри этого блока
+        cols = catalog_div.find_all("div", class_="col")
+
+        # Извлекаем ссылки <a> из каждого элемента "col"
+        for col in cols:
+            link = col.find("a")
+            if link and link.get('href'):
+                full_link1 = "https://valtec.ru" + str(link.get('href'))
+                full_links1.append(full_link1)
+
     return full_links1
+
+
+def get_urls_lvl_0(url):
+    response = requests.get(url)
+    html = response.text
+    soup = BeautifulSoup(html, "html.parser")
+    full_links0 = []
+    # Находим div с классом "catalog2 index test"
+    catalog_div = soup.find("div", class_="catalog2 index test")
+
+    # Извлекаем все ссылки (теги <a>) внутри этого блока
+    links0 = catalog_div.find_all("a")
+
+    # Собираем полные ссылки
+    for link in links0:
+        full_link0 = "https://valtec.ru" + str(link.get('href'))
+        full_links0.append(full_link0)
+
+    return full_links0
 
 
 
@@ -140,8 +158,10 @@ url1 = "https://valtec.ru/catalog/filtry/"
 #url3 = "https://valtec.ru/catalog/filtry/filtry_kosye/filtruyushij_lement_dlya_kosyh_filtrov.html"
 #table_decomposition(url3)
 
-for i in get_urls_lvl_1(url1):
-    print(f"Прогон цикла ссылок 1 уровня: {i}")
-    for j in get_urls_lvl_2(i):
-        print(f"Прогон цикла ссылок 2 уровня: {j}")
-        table_decomposition(j)
+for x in get_urls_lvl_0(url0): # парсим корневой уровень каталога
+    print(f"Прогон цикла ссылок 0 уровня: {x}")
+    for i in get_urls_lvl_1(x):# парсим первый уровень каталога
+        print(f"Прогон цикла ссылок 1 уровня: {i}")
+        for j in get_urls_lvl_2(i):# парсим втрой уровень каталога, там уже лежат карточки товаров
+            print(f"Прогон цикла ссылок 2 уровня: {j}")
+            table_decomposition(j)
