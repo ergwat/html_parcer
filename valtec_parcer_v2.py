@@ -26,7 +26,8 @@ def table_decomposition(url):
 
         # Находим все таблицы на странице
         tables = soup.find_all("table")
-        pprint.pprint(f"tables = {tables}")
+        print(f"Найдено таблиц: {len(tables)}")
+
         # Инициализируем список для хранения записей
         table_data = []
 
@@ -34,13 +35,11 @@ def table_decomposition(url):
         for table_index, table in enumerate(tables):
             # Проверяем, содержит ли первая строка таблицы класс "min-hidden"
             first_row = table.find('tr', class_='min-hidden')
-            #print(f"first_row = {first_row}")
             if first_row is not None:
                 # Дополнительно проверяем, содержат ли заголовки ключевые слова (например, "Артикул", "Размер", "Цена")
                 headers = [th.get_text(strip=True) for th in first_row.find_all('th')]
-                #print(f"headers = {headers}")
-                if first_row or any(keyword in headers for keyword in ["артикул", "размер", "цена"]):
 
+                if first_row or any(keyword in headers for keyword in ["артикул", "размер", "цена"]):
                     # Проходим по строкам таблицы (начиная со 2-й строки данных)
                     rows = table.find_all('tr')[2:]
 
@@ -56,8 +55,13 @@ def table_decomposition(url):
                             }
                             for i, cell in enumerate(cells):
                                 # Если заголовок содержит "Цена", обрабатываем как цену
-                                if 'цена' in headers[i]:
-                                    price_text = cell.get_text(strip=True).replace('p', '').strip()
+                                if 'цена' in headers[i].lower():
+                                    # Проверяем, что именно содержится в ячейке с ценой
+                                    price_text = cell.get_text(strip=True)
+
+                                    # Используем регулярное выражение для извлечения всех цифр (включая дробные)
+                                    price_text = ''.join(re.findall(r'\d+', price_text))  # Извлекаем только цифры
+
                                     row_data[headers[i]] = price_text
                                 else:
                                     # Добавляем текст в соответствующий заголовок
@@ -69,13 +73,12 @@ def table_decomposition(url):
                             table_data.append(row_data)
             else:
                 print(f"Пропускаем таблицу без класса 'min-hidden'")
-                continue
+
         # Сохраняем данные в Excel, если таблицы были найдены
         if table_data:
             pprint.pprint(table_data)
             print_to_excel(table_data)
 
-        #print(f"table_data sent to print_to_excel= {table_data}")
         return table_data
 
     except requests.exceptions.RequestException as e:  # Ловим любые ошибки с запросом
@@ -256,6 +259,7 @@ def get_urls_by_classes(url, class_names):
 
 url0 = "https://valtec.ru/catalog/"
 
+class_names = ["catalog2 index test", "catalog3 group","catalog-2 container", "catalog2 subgroup"]
 # Начало отсчёта времени
 start_time = time.time()
 
@@ -264,11 +268,11 @@ total_products_found = 0
 
 '''здесь в параметрах функции передаются возможные варианты классов, в которых находятся разделы каталогов'''
 # Основной цикл парсинга
-for x in get_urls_by_classes(url0, ["catalog2 index test"]):  # парсим корневой уровень каталога
+for x in get_urls_by_classes(url0, class_names):  # парсим корневой уровень каталога
     print(f"Прогон цикла ссылок 0 уровня: {x}")
-    for i in get_urls_by_classes(x, ["catalog-2 container", "catalog3 group"]):  # парсим первый уровень каталога
+    for i in get_urls_by_classes(x, class_names):  # парсим первый уровень каталога
         print(f"Прогон цикла ссылок 1 уровня: {i}")
-        for j in get_urls_by_classes(i, ["catalog2 subgroup"]):  # парсим второй уровень каталога, там уже лежат карточки товаров
+        for j in get_urls_by_classes(i, class_names):  # парсим второй уровень каталога, там уже лежат карточки товаров
             print(f"Прогон цикла ссылок 2 уровня: {j}")
             #table_decomposition(j)
             # Вызываем функцию парсинга таблицы и сохраняем результат
