@@ -8,47 +8,74 @@ from openpyxl import load_workbook
 import os
 import time
 
+
 def table_decomposition(url):
+    try:
+        response = requests.get(url)
+        if response.status_code != 200:  # Проверяем код ответа
+            print(f"Ошибка при запросе {url}. Статус код: {response.status_code}")
+            return []
 
-    html_content = requests.get(url).text
+        html_content = response.text
+        # Создание объекта BeautifulSoup
+        soup = BeautifulSoup(html_content, 'html.parser')
 
-    # Создание объекта BeautifulSoup
-    soup = BeautifulSoup(html_content, 'html.parser')
+        # Извлекаем заголовок страницы (тег <h1>)
+        page_title = soup.find('h1').get_text(strip=True)
 
-    # Извлекаем заголовок страницы (тег <h1>)
-    page_title = soup.find('h1').get_text(strip=True)
+        # Находим все таблицы на странице
+        tables = soup.find_all("table")
 
-    # Находим заголовки таблицы
-    headers = [th.get_text(strip=True) for th in soup.find_all('tr')[0].find_all('th')]
+        # Инициализируем список для хранения записей
+        table_data = []
 
-    # Инициализируем список для хранения записей
-    table_data = []
+        # Проходим по всем таблицам
+        for table_index, table in enumerate(tables):
+            # Проверяем, содержит ли первая строка таблицы класс "min-hidden"
+            first_row = table.find('tr', class_='min-hidden')
 
-    # Проходим по строкам таблицы (начиная со 2-й строки данных)
-    for row in soup.find_all('tr')[2:]:
-        # Извлекаем все ячейки в строке
-        cells = row.find_all('td')
-        # Проверяем, что это не строка с дополнительной информацией (например, строка с "*") и что количество ячеек совпадает с количеством заголовков
-        if len(cells) == len(headers):
-            # Создаем запись (словарь) для каждой строки таблицы
-            row_data = {
-                'Название': page_title,  # Добавляем заголовок страницы
-                'Ссылка': url  # Добавляем ссылку на страницу
-            }
-            for i, cell in enumerate(cells):
-                # Если заголовок содержит "Цена", обрабатываем как цену
-                if 'цена' in headers[i].lower():
-                    price_text = cell.get_text(strip=True).replace('p', '').strip()
-                    row_data[headers[i]] = price_text
-                else:
-                    # Добавляем текст в соответствующий заголовок
-                    row_data[headers[i]] = cell.get_text(strip=True)
-            # Добавляем запись в список
-            table_data.append(row_data)
+            # Дополнительно проверяем, содержат ли заголовки ключевые слова (например, "Артикул", "Размер", "Цена")
+            headers = [th.get_text(strip=True).lower() for th in table.find_all('th')]
+            if first_row or any(keyword in headers for keyword in ["артикул", "размер", "цена"]):
 
-    # Вывод результата
-    pprint.pprint(table_data)
-    print_to_excel(table_data)
+                # Проходим по строкам таблицы (начиная со 2-й строки данных)
+                rows = table.find_all('tr')[2:]
+
+                for row_index, row in enumerate(rows):
+                    # Извлекаем все ячейки в строке
+                    cells = row.find_all('td')
+
+                    # Проверяем, что количество ячеек совпадает с количеством заголовков
+                    if len(cells) == len(headers):
+                        # Создаем запись (словарь) для каждой строки таблицы
+                        row_data = {
+                            'Название': page_title  # Сначала добавляем заголовок страницы
+                        }
+                        for i, cell in enumerate(cells):
+                            # Если заголовок содержит "Цена", обрабатываем как цену
+                            if 'цена' in headers[i]:
+                                price_text = cell.get_text(strip=True).replace('p', '').strip()
+                                row_data[headers[i]] = price_text
+                            else:
+                                # Добавляем текст в соответствующий заголовок
+                                row_data[headers[i]] = cell.get_text(strip=True)
+
+                        # Добавляем ссылку на товар в последнюю очередь
+                        row_data['Ссылка'] = url
+                        # Добавляем запись в список
+                        table_data.append(row_data)
+
+        # Сохраняем данные в Excel, если таблицы были найдены
+        if table_data:
+            print(table_data)
+            print_to_excel(table_data)
+
+        return table_data
+
+    except requests.exceptions.RequestException as e:  # Ловим любые ошибки с запросом
+        print(f"Ошибка запроса: {e}")
+        return []
+
 
 def print_to_excel(table_data):
 
@@ -98,64 +125,92 @@ def print_to_excel(table_data):
 
 
 def get_urls_lvl_2(url):
-    response = requests.get(url)
-    html = response.text
-    soup = BeautifulSoup(html, "html.parser")
-    full_links2 = []
-    # Находим div с классом "catalog2 subgroup"
-    catalog_div = soup.find("div", class_="catalog2 subgroup")
+    try:
+        response = requests.get(url)
+        if response.status_code != 200:  # Проверяем код ответа
+            print(f"Ошибка при запросе {url}. Статус код: {response.status_code}")
+            return []
 
-    # Извлекаем все ссылки (теги <a>) внутри этого блока
-    links2 = catalog_div.find_all("a")
+        html = response.text
+        soup = BeautifulSoup(html, "html.parser")
+        full_links2 = []
+        # Находим div с классом "catalog2 subgroup"
+        catalog_div = soup.find("div", class_="catalog2 subgroup")
 
-    # Собираем полные ссылки
-    for link in links2:
-        full_link2 = "https://valtec.ru" + str(link.get('href'))
-        full_links2.append(full_link2)
-    return full_links2
+        # Извлекаем все ссылки (теги <a>) внутри этого блока
+        if catalog_div:
+            links2 = catalog_div.find_all("a")
+            # Собираем полные ссылки
+            for link in links2:
+                full_link2 = "https://valtec.ru" + str(link.get('href'))
+                full_links2.append(full_link2)
+
+        return full_links2
+
+    except requests.exceptions.RequestException as e:  # Ловим любые ошибки с запросом
+        print(f"Ошибка запроса: {e}")
+        return []
 
 
 def get_urls_lvl_1(url):
-    response = requests.get(url)
-    html = response.text
-    soup = BeautifulSoup(html, "html.parser")
-    full_links1 = []
+    try:
+        response = requests.get(url)
+        if response.status_code != 200:  # Проверяем код ответа
+            print(f"Ошибка при запросе {url}. Статус код: {response.status_code}")
+            return []
 
-    # Находим родительский блок с классом "catalog-2 container"
-    catalog_div = soup.find("div", class_="catalog-2 container")
+        html = response.text
+        soup = BeautifulSoup(html, "html.parser")
+        full_links1 = []
 
-    # Если такой блок найден
-    if catalog_div:
-        # Находим все элементы div с классом "col" внутри этого блока
-        cols = catalog_div.find_all("div", class_="col")
+        # Находим родительский блок с классом "catalog-2 container"
+        catalog_div = soup.find("div", class_="catalog-2 container")
 
-        # Извлекаем ссылки <a> из каждого элемента "col"
-        for col in cols:
-            link = col.find("a")
-            if link and link.get('href'):
-                full_link1 = "https://valtec.ru" + str(link.get('href'))
-                full_links1.append(full_link1)
+        # Если такой блок найден
+        if catalog_div:
+            # Находим все элементы div с классом "col" внутри этого блока
+            cols = catalog_div.find_all("div", class_="col")
 
-    return full_links1
+            # Извлекаем ссылки <a> из каждого элемента "col"
+            for col in cols:
+                link = col.find("a")
+                if link and link.get('href'):
+                    full_link1 = "https://valtec.ru" + str(link.get('href'))
+                    full_links1.append(full_link1)
+
+        return full_links1
+
+    except requests.exceptions.RequestException as e:  # Ловим любые ошибки с запросом
+        print(f"Ошибка запроса: {e}")
+        return []
 
 
 def get_urls_lvl_0(url):
-    response = requests.get(url)
-    html = response.text
-    soup = BeautifulSoup(html, "html.parser")
-    full_links0 = []
-    # Находим div с классом "catalog2 index test"
-    catalog_div = soup.find("div", class_="catalog2 index test")
+    try:
+        response = requests.get(url)
+        if response.status_code != 200:  # Проверяем код ответа, если не 200 - пропускаем
+            print(f"Ошибка при запросе {url}. Статус код: {response.status_code}")
+            return []
 
-    # Извлекаем все ссылки (теги <a>) внутри этого блока
-    links0 = catalog_div.find_all("a")
+        html = response.text
+        soup = BeautifulSoup(html, "html.parser")
+        full_links0 = []
+        # Находим div с классом "catalog2 index test"
+        catalog_div = soup.find("div", class_="catalog2 index test")
 
-    # Собираем полные ссылки
-    for link in links0:
-        full_link0 = "https://valtec.ru" + str(link.get('href'))
-        full_links0.append(full_link0)
+        # Извлекаем все ссылки (теги <a>) внутри этого блока
+        if catalog_div:
+            links0 = catalog_div.find_all("a")
+            # Собираем полные ссылки
+            for link in links0:
+                full_link0 = "https://valtec.ru" + str(link.get('href'))
+                full_links0.append(full_link0)
 
-    return full_links0
+        return full_links0
+
+    except requests.exceptions.RequestException as e:  # Ловим любые ошибки с запросом
+        print(f"Ошибка запроса: {e}")
+        return []  # Возвращаем пустой список, чтобы продолжить выполнение программы
 
 
 
