@@ -10,6 +10,7 @@ import time
 
 
 def table_decomposition(url):
+    print("table decomposition launched")
     try:
         response = requests.get(url)
         if response.status_code != 200:  # Проверяем код ответа
@@ -22,6 +23,7 @@ def table_decomposition(url):
 
         # Извлекаем заголовок страницы (тег <h1>)
         page_title = soup.find('h1').get_text(strip=True)
+        print(f"Заголовок страницы: {page_title}")
 
         # Находим все таблицы на странице
         tables = soup.find_all("table")
@@ -36,20 +38,26 @@ def table_decomposition(url):
 
             # Дополнительно проверяем, содержат ли заголовки ключевые слова (например, "Артикул", "Размер", "Цена")
             headers = [th.get_text(strip=True).lower() for th in table.find_all('th')]
+            print(f"Заголовки таблицы: {headers}")
+
             if first_row or any(keyword in headers for keyword in ["артикул", "размер", "цена"]):
+                print(f"Обрабатываем таблицу {table_index + 1} с классом 'min-hidden' или с релевантными заголовками")
 
                 # Проходим по строкам таблицы (начиная со 2-й строки данных)
                 rows = table.find_all('tr')[2:]
+                print(f"Количество строк в таблице: {len(rows)}")
 
                 for row_index, row in enumerate(rows):
                     # Извлекаем все ячейки в строке
                     cells = row.find_all('td')
+                    print(f"Строка {row_index + 1}: Количество ячеек = {len(cells)}")
 
                     # Проверяем, что количество ячеек совпадает с количеством заголовков
                     if len(cells) == len(headers):
                         # Создаем запись (словарь) для каждой строки таблицы
                         row_data = {
-                            'Название': page_title  # Сначала добавляем заголовок страницы
+                            'Название': page_title,  # Добавляем заголовок страницы
+                            'Ссылка': url  # Добавляем ссылку на страницу
                         }
                         for i, cell in enumerate(cells):
                             # Если заголовок содержит "Цена", обрабатываем как цену
@@ -59,16 +67,18 @@ def table_decomposition(url):
                             else:
                                 # Добавляем текст в соответствующий заголовок
                                 row_data[headers[i]] = cell.get_text(strip=True)
-
-                        # Добавляем ссылку на товар в последнюю очередь
-                        row_data['Ссылка'] = url
                         # Добавляем запись в список
                         table_data.append(row_data)
+                    else:
+                        print(f"Количество ячеек не совпадает с количеством заголовков для строки {row_index + 1}")
+            else:
+                print(f"Таблица {table_index + 1} пропущена (не соответствует условиям).")
 
         # Сохраняем данные в Excel, если таблицы были найдены
         if table_data:
-            print(table_data)
             print_to_excel(table_data)
+        else:
+            print("Таблицы не содержат данных для записи.")
 
         return table_data
 
@@ -78,6 +88,7 @@ def table_decomposition(url):
 
 
 def print_to_excel(table_data):
+    print("print_to_excel")
 
     # Преобразование строковых значений цен в числа с плавающей запятой и округление до 2 знаков
     for row in table_data:
