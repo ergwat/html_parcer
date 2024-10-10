@@ -222,6 +222,8 @@ def get_urls_lvl_0(url):
         return []  # Возвращаем пустой список, чтобы продолжить выполнение программы
 
 '''
+
+
 def get_urls_by_classes(url, class_names):
     try:
         response = requests.get(url)
