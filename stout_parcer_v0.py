@@ -1,43 +1,8 @@
 """ ========================== Stout.ru ==========================
-
 Корневая папка каталога - https://www.stout.ru/catalog/
 Все ссылки на подразделы имеют класс "but but-1"
 Уже на первом уровне каталога можно раскрутить все внутренние товары через пагинацию.
 В карточку проваливаться не нужно, артикул, название и цену можно взять в списке товаров.
-
-Структура карточки товара:
-                    <div class="product-item-container">
-                        <!-- Image -->
-                                                    <div class='product-item-img'>
-                            <span>
-                                <picture class='img-block'>
-                                    <img width='237'
-                                         height='246'
-                                                                                  data-src='/images/photo-empty.jpg'
-                                         class='over-img lazy'
-                                         alt=''>
-                                </picture>
-                            </span>
-                            </div>
-                                                <div class="product-item-infoblock">
-                            <!-- Title -->
-                            <span class='product-item-sku a_pt_2'>Арт.SCG-1100-0019100</span>
-                            <a href="/catalog/konvektory/prinadlezhnosti-dlya-vnutripolnykh-konvektorov/stout-scg-scg11000019100-stout-reshyetka-rolikovaya-dlya-konvektora-shirina-190-dlina-1000-anodirova/"
-                               class='product-item-title a_pt_1'>STOUT SCG SCG-1100-0019100 STOUT Решётка роликовая для конвектора, ширина 190, длина 1000 (анодированный алюминий)</a>
-
-
-                            <div class='product-item-info'>
-                                <div class='row justify-content-between'>
-                                    <div class='col'>
-
-
-                                            <strong class='block-title product-item-price'>11 106                                                <svg width='16' height='16' class='icon'>
-                                                    <use xlink:href="/local/templates/stout/img/sprite.svg#rub"></use>
-                                                </svg>
-                                            </strong>
-
-                                    </div>
-
 ==================================================================
 """
 
@@ -54,7 +19,7 @@ import re
 
 
 def print_to_excel(table_data):
-    print("print_to_excel")
+    #print("print_to_excel")
 
     # Преобразование строковых значений цен в числа с плавающей запятой и округление до 2 знаков
     for row in table_data:
@@ -101,7 +66,7 @@ def print_to_excel(table_data):
     # Сохранение файла
     wb.save(filename)
 
-    print(f"Данные успешно сохранены в файл {filename}.")
+    print(f"Данные о {len(table_data)} товарах успешно сохранены в файл {filename}.")
 
 
 
@@ -130,6 +95,8 @@ def get_urls_lvl_0(url): # Разбираем корневой уровень к
 
 
 def section_decomposition(url):
+    total_products = 0  # Счётчик товаров на странице
+
     try:
         response = requests.get(url)
         if response.status_code != 200:  # Проверяем код ответа
@@ -146,7 +113,7 @@ def section_decomposition(url):
 
         # Находим все элементы товара с классом 'product-item'
         sku_list = soup.find_all('article', class_='product-item')
-        print(f"Найдено товаров: {len(sku_list)}")  # Проверяем количество найденных товаров
+        #print(f"Найдено товаров: {len(sku_list)}")  # Проверяем количество найденных товаров
 
         for sku in sku_list:
             # Ищем элемент с артикулом
@@ -156,7 +123,6 @@ def section_decomposition(url):
             if sku_article_tag:
                 # Извлекаем артикул товара
                 sku_article = sku_article_tag.get_text(strip=True)
-
                 # Извлекаем название товара и ссылку на его страницу
                 sku_name_tag = sku.find("a", class_="product-item-title")
                 sku_name = sku_name_tag.get_text(strip=True)  # Название
@@ -180,17 +146,19 @@ def section_decomposition(url):
                     "Дата": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
                 table_data.append(sku_data)
+                total_products += 1  # Счётчик товаров на странице
 
         # Проверяем результат
         if table_data:
             print_to_excel(table_data)
-            #pprint.pprint(table_data)  # Можешь здесь сохранить данные в Excel или базу данных
+            return total_products  # Возвращаем количество найденных товаров
+            #pprint.pprint(table_data)
         else:
             print("Товары не найдены или данные отсутствуют.")
 
     except requests.exceptions.RequestException as e:  # Ловим любые ошибки с запросом
         print(f"Ошибка запроса: {e}")
-        return []
+        return total_products  # Возвращаем количество найденных товаров
 
 
 def get_total_pages(url):
@@ -220,7 +188,7 @@ def get_total_pages(url):
             if match:
                 page_num = int(match.group(1))
                 total_pages = max(total_pages, page_num)  # Находим максимальный номер страницы
-
+        print(f"В текущем разделе {total_pages} страниц")
         return total_pages
 
     except requests.exceptions.RequestException as e:  # Ловим любые ошибки с запросом
@@ -229,6 +197,7 @@ def get_total_pages(url):
 
 
 def process_all_pages(base_url):
+    total_products = 0  # Глобальный счётчик товаров
     total_pages = get_total_pages(base_url)  # Определяем количество страниц
 
     for page in range(1, total_pages + 1):
@@ -237,9 +206,11 @@ def process_all_pages(base_url):
         print(f"Обрабатываем страницу: {page_url}")
 
         # Вызываем функцию для обработки товаров на каждой странице
-        section_decomposition(page_url)
+        products_on_page = section_decomposition(page_url)
+        total_products += products_on_page  # Суммируем количество товаров со всех страниц
 
-
+    print(f"Всего найдено товаров в разделе: {total_products}")
+    return total_products
 
 
 url = "https://www.stout.ru/catalog/"
@@ -251,8 +222,8 @@ total_products_found = 0
 # Основной цикл парсинга
 for x in get_urls_lvl_0(url):  # парсим корневой уровень каталога
     print(f"Прогон цикла ссылок 0 уровня: {x}")
-    process_all_pages(x)
-    #section_decomposition(x)
+    total_products_found +=process_all_pages(x)
+
 
 
 
@@ -264,6 +235,8 @@ elapsed_time = end_time - start_time
 elapsed_time_minutes = elapsed_time / 60  # переводим в минуты
 
 # Вывод результатов
+print("=========================================")
 print(f"Программа завершена.")
-#print(f"Найдено товаров: {total_products_found}")
+print(f"Найдено товаров: {total_products_found}")
 print(f"Время выполнения программы: {elapsed_time:.2f} секунд ({elapsed_time_minutes:.2f} минут)")
+print("=========================================")
