@@ -160,7 +160,7 @@ def section_decomposition(url):
                 # Извлекаем название товара и ссылку на его страницу
                 sku_name_tag = sku.find("a", class_="product-item-title")
                 sku_name = sku_name_tag.get_text(strip=True)  # Название
-                sku_link = sku_name_tag['href']  # Ссылка на страницу товара
+                sku_link = "https://stout.ru" + str(sku_name_tag['href'])  # Ссылка на страницу товара
 
                 # Извлекаем цену товара
                 sku_price_tag = sku.find("strong", class_="block-title product-item-price")
@@ -193,6 +193,55 @@ def section_decomposition(url):
         return []
 
 
+def get_total_pages(url):
+    try:
+        response = requests.get(url)
+        if response.status_code != 200:  # Проверяем код ответа
+            print(f"Ошибка при запросе {url}. Статус код: {response.status_code}")
+            return 1  # Если не можем определить количество страниц, возвращаем хотя бы одну
+
+        html_content = response.text
+        soup = BeautifulSoup(html_content, 'html.parser')
+
+        # Находим блок пагинации
+        pagination = soup.find('div', class_='reviews-pagination')  # Блок пагинации
+
+        if not pagination:
+            print("Блок пагинации не найден. Возвращаем 1 страницу.")
+            return 1  # Если пагинации нет, возвращаем 1 страницу
+
+        # Находим все ссылки на страницы в блоке пагинации
+        page_links = pagination.find_all('a', href=True)
+
+        # Извлекаем номер последней страницы из href ссылки (например, "?PAGEN_1=3")
+        total_pages = 1
+        for link in page_links:
+            match = re.search(r'PAGEN_\d+=(\d+)', link['href'])  # Ищем номер страницы в параметре PAGEN_
+            if match:
+                page_num = int(match.group(1))
+                total_pages = max(total_pages, page_num)  # Находим максимальный номер страницы
+
+        return total_pages
+
+    except requests.exceptions.RequestException as e:  # Ловим любые ошибки с запросом
+        print(f"Ошибка запроса: {e}")
+        return 1  # Возвращаем 1, если не можем получить количество страниц
+
+
+def process_all_pages(base_url):
+    total_pages = get_total_pages(base_url)  # Определяем количество страниц
+
+    for page in range(1, total_pages + 1):
+        # Формируем URL для каждой страницы, добавляя параметр пагинации
+        page_url = f"{base_url}?PAGEN_1={page}"
+        print(f"Обрабатываем страницу: {page_url}")
+
+        # Вызываем функцию для обработки товаров на каждой странице
+        section_decomposition(page_url)
+
+
+
+
 url = "https://www.stout.ru/catalog/"
 # Начало отсчёта времени
 start_time = time.time()
@@ -202,7 +251,8 @@ total_products_found = 0
 # Основной цикл парсинга
 for x in get_urls_lvl_0(url):  # парсим корневой уровень каталога
     print(f"Прогон цикла ссылок 0 уровня: {x}")
-    section_decomposition(x)
+    process_all_pages(x)
+    #section_decomposition(x)
 
 
 
