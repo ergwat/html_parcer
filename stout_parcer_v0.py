@@ -69,7 +69,6 @@ def print_to_excel(table_data):
     print(f"Данные о {len(table_data)} товарах успешно сохранены в файл {filename}.")
 
 
-
 def get_urls_lvl_0(url): # Разбираем корневой уровень каталога, получаем ссылки на разделы первого уровня
     try:
         response = requests.get(url)
@@ -122,7 +121,7 @@ def section_decomposition(url):
             # Продолжаем только если нашли артикул с нужным классом
             if sku_article_tag:
                 # Извлекаем артикул товара
-                sku_article = sku_article_tag.get_text(strip=True)
+                sku_article = sku_article_tag.get_text(strip=True)[4:]  # Обрезаем первые 4 символа
                 # Извлекаем название товара и ссылку на его страницу
                 sku_name_tag = sku.find("a", class_="product-item-title")
                 sku_name = sku_name_tag.get_text(strip=True)  # Название
@@ -213,30 +212,35 @@ def process_all_pages(base_url):
     return total_products
 
 
-url = "https://www.stout.ru/catalog/"
-# Начало отсчёта времени
-start_time = time.time()
-# Счётчик для подсчёта количества найденных товаров
-total_products_found = 0
+def main():
+    url = "https://www.stout.ru/catalog/"
+    # Начало отсчёта времени
+    start_time = time.time()
+    # Счётчик для подсчёта количества найденных товаров
+    total_products_found = 0
 
-# Основной цикл парсинга
-for x in get_urls_lvl_0(url):  # парсим корневой уровень каталога
-    print(f"Прогон цикла ссылок 0 уровня: {x}")
-    total_products_found +=process_all_pages(x)
+    # Основной цикл парсинга
+    for x in get_urls_lvl_0(url):  # парсим корневой уровень каталога
+        print(f"Анализ раздела корневого уровня каталога: {x}")
+        total_products_found +=process_all_pages(x)
 
 
 
 
-# Конец отсчёта времени
-end_time = time.time()
+    # Конец отсчёта времени
+    end_time = time.time()
 
-# Подсчитываем потраченное время
-elapsed_time = end_time - start_time
-elapsed_time_minutes = elapsed_time / 60  # переводим в минуты
+    # Подсчитываем потраченное время
+    elapsed_time = end_time - start_time
+    elapsed_time_minutes = elapsed_time / 60  # переводим в минуты
 
-# Вывод результатов
-print("=========================================")
-print(f"Программа завершена.")
-print(f"Найдено товаров: {total_products_found}")
-print(f"Время выполнения программы: {elapsed_time:.2f} секунд ({elapsed_time_minutes:.2f} минут)")
-print("=========================================")
+    # Вывод результатов
+    print("=========================================")
+    print(f"Программа завершена.")
+    print(f"Найдено товаров: {total_products_found}")
+    print(f"Время выполнения программы: {elapsed_time:.2f} секунд ({elapsed_time_minutes:.2f} минут)")
+    print("=========================================")
+
+
+if __name__ == "__main__":
+    main()
